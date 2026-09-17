@@ -4,7 +4,7 @@ This directory contains utility scripts for managing schemas in the [IBM Event S
 
 ## Scripts
 
-### `scripts/import_schemas.sh` — Batch schema import
+### `import_schemas.sh` — Batch schema import
 
 Imports all schemas from a local export directory into the Schema Registry, preserving the original schema IDs using subject-level `IMPORT` mode.
 
@@ -14,6 +14,7 @@ This is useful when migrating schemas from IBM Event Streams schema registry to 
 
 - [`curl`](https://curl.se/)
 - [`jq`](https://stedolan.github.io/jq/)
+- A Schema Registry that allows subject mode changes (`SCHEMA_REGISTRY_MODE_MUTABILITY=true`)
 
 #### Expected export directory layout
 
@@ -21,11 +22,22 @@ The script expects schemas to be arranged in the following layout, as produced b
 
 ```
 schema-export/
+  manifest.json
   <subject-name>/
     v1.json
     v2.json
     ...
 ```
+
+`manifest.json` lists the subjects in the order they must be imported, so that a schema referencing another subject is imported after its dependency:
+
+```json
+{
+  "subjects": ["my-topic-value", "my-other-topic-value"]
+}
+```
+
+It is required — the script exits if it is missing. Subject directories are named after the subject with the characters `/\:*?"<>|` replaced by `_`. A subject exported only as a dependency may contain a single version file that is not `v1.json`.
 
 Each JSON file must contain the fields exported by the Schema Registry API, at minimum:
 
@@ -41,10 +53,10 @@ Each JSON file must contain the fields exported by the Schema Registry API, at m
 
 #### Usage
 
-Set the `SR_URL` environment variable to your Schema Registry endpoint and run the script:
+Set the `SR_URL` environment variable to your Schema Registry endpoint and run the script (default: `http://localhost:8081`):
 
 ```bash
-SR_URL=https://<your-schema-registry-url> ./scripts/import_schemas.sh
+SR_URL=https://<your-schema-registry-url> ./import_schemas.sh
 ```
 
 You can also override the export directory (default: `./schema-export`):
@@ -52,25 +64,25 @@ You can also override the export directory (default: `./schema-export`):
 ```bash
 SR_URL=https://<your-schema-registry-url> \
   OUT_DIR=/path/to/schema-export \
-  ./scripts/import_schemas.sh
+  ./import_schemas.sh
 ```
 
 #### What the script does
 
-For each subject found in the export directory, the script:
+For each subject listed in `manifest.json`, the script:
 
 1. Switches the subject into `IMPORT` mode — this allows schemas to be registered with their original IDs.
 2. Posts each versioned schema file in order.
 3. Restores the subject to `READWRITE` mode.
 
+If a schema fails to register, the subject is restored to `READWRITE` before the script exits, so a failed run does not leave it stuck in `IMPORT` mode.
+
 #### Authentication
 
-If your Schema Registry requires authentication, pass credentials via curl's `-u` flag or an `Authorization` header. You can extend the script by adding a `BASIC_AUTH` variable:
+If your Schema Registry requires authentication, edit the `AUTH` variable near the top of the script. It is passed to every `curl` call:
 
 ```bash
-SR_URL=https://<your-schema-registry-url> \
-  BASIC_AUTH="token:<api-key>" \
-  ./scripts/import_schemas.sh
+AUTH="-u token:<api-key>"
 ```
 
-And add `-u "$BASIC_AUTH"` to each `curl` call inside the script.
+The same variable can carry other curl flags your registry needs, for example `AUTH="--cacert /path/to/ca.pem"`.
