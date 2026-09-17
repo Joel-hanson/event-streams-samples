@@ -4,7 +4,7 @@ This directory contains utility scripts for managing schemas in the [IBM Event S
 
 ## Scripts
 
-### `import_schemas.sh` — Batch schema import
+### `import_schemas.sh` - Batch schema import
 
 Imports all schemas from a local export directory into the Schema Registry, preserving the original schema IDs using subject-level `IMPORT` mode.
 
@@ -12,9 +12,9 @@ This is useful when migrating schemas from IBM Event Streams schema registry to 
 
 #### Prerequisites
 
-- [`curl`](https://curl.se/)
-- [`jq`](https://stedolan.github.io/jq/)
-- A Schema Registry that allows subject mode changes (`SCHEMA_REGISTRY_MODE_MUTABILITY=true`)
+- [`curl`](https://curl.se/) 7.76.0 or later
+- [`jq`](https://stedolan.github.io/jq/) 1.6 or later
+- A Schema Registry that allows subject mode changes (`SCHEMA_REGISTRY_MODE_MUTABILITY=true`).
 
 #### Expected export directory layout
 
@@ -37,7 +37,7 @@ schema-export/
 }
 ```
 
-It is required — the script exits if it is missing. Subject directories are named after the subject with the characters `/\:*?"<>|` replaced by `_`. A subject exported only as a dependency may contain a single version file that is not `v1.json`.
+It is required - the script exits if it is missing. Subject directories are named after the subject with the characters `/\:*?"<>|` replaced by `_`. A subject exported only as a dependency may contain a single version file that is not `v1.json`.
 
 Each JSON file must contain the fields exported by the Schema Registry API, at minimum:
 
@@ -71,7 +71,7 @@ SR_URL=https://<your-schema-registry-url> \
 
 For each subject listed in `manifest.json`, the script:
 
-1. Switches the subject into `IMPORT` mode — this allows schemas to be registered with their original IDs.
+1. Switches the subject into `IMPORT` mode - this allows schemas to be registered with their original IDs.
 2. Posts each versioned schema file in order.
 3. Restores the subject to `READWRITE` mode.
 
